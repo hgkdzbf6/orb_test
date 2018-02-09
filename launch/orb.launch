@@ -1,0 +1,6 @@
+<launch>
+  <node name="orb_main" pkg="sift" type="orb" output="screen">
+  </node>
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find sift)/rviz/image.rviz"></node >
+</launch>
