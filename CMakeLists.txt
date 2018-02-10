@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(sift)
 
 SET(CMAKE_CXX_FLAGS "-std=c++11")
-find_package(catkin REQUIRED COMPONENTS roscpp rospy cv_bridge image_transport camera_info_manager sensor_msgs)
+find_package(catkin REQUIRED COMPONENTS roscpp rospy cv_bridge image_transport camera_info_manager sensor_msgs geometry_msgs)
 
 
 find_package(OpenCV REQUIRED)

@@ -4,7 +4,9 @@
 #include <cv_bridge/cv_bridge.h>
 #include <sstream>
 #include <boost/assign/list_of.hpp>
+#include <boost/bind.hpp>
 #include "sift/orb_main.hpp"
+#include <std_srvs/Trigger.h>
 
 
 int main(int argc, char** argv)

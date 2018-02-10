@@ -7,6 +7,8 @@
 #include "cv_bridge/cv_bridge.h"  
 #include <ros/ros.h>
 #include <boost/bind.hpp>
+#include <std_srvs/Trigger.h>
+#include <geometry_msgs/PoseStamped.h>
 
 static const int UAV_NUM = 2;
 
@@ -16,13 +18,18 @@ class OrbMain
 public:
 	OrbMain();
 	virtual ~OrbMain();
+	void run();
 private:
-
+	bool init_ok;
+	int uav_index_;
 	ros::NodeHandle nh_;
 	// 算了为了可扩展性,直接上数组吧
 	// 这个应该一个就行, 不用数组了
 	// std::vector<image_transport::ImageTransport> its_(UAV_NUM);
 	image_transport::ImageTransport it_;
+	ros::ServiceServer ss_;
+	
+	std::vector<ros::Publisher> t_pubs_;
 
 	std::vector<image_transport::Subscriber> image_subs_;
 	std::vector<image_transport::Publisher> image_pubs_;
@@ -44,4 +51,7 @@ private:
                             std::vector<cv::KeyPoint> keypoints_2,
                             std::vector< cv::DMatch > matches,
                             cv::Mat& R, cv::Mat& t );
+
+	bool callback(std_srvs::Trigger::Request& request, std_srvs::Trigger::Response& response);
+	void singleMatch(int i);
 };
