@@ -6,9 +6,12 @@
 #include "image_transport/image_transport.h"  
 #include "cv_bridge/cv_bridge.h"  
 #include <ros/ros.h>
+#include <tf/tf.h>
 #include <boost/bind.hpp>
 #include <std_srvs/Trigger.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <Eigen/Core>
+#include <Eigen/Geometry>
 
 static const int UAV_NUM = 2;
 
@@ -20,7 +23,7 @@ public:
 	virtual ~OrbMain();
 	void run();
 private:
-	bool init_ok;
+	bool init_ok_;
 	int uav_index_;
 	ros::NodeHandle nh_;
 	// 算了为了可扩展性,直接上数组吧

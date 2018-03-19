@@ -12,7 +12,7 @@ descriptors_(UAV_NUM),
 match_pubs_(UAV_NUM),
 t_pubs_(UAV_NUM),
 uav_index_(0),
-init_ok(false)
+init_ok_(false)
 {
   // image_pub_=it_.advertise("out",2);
   // image_sub_=it_.subscribe("/hummingbird/svo/image",2,&OrbMain::ImageCb,this);
@@ -35,7 +35,7 @@ init_ok(false)
     pnh.param<std::string>(sub_name_str,sub_strs_[i],sub_str);
     pnh.param<std::string>(pub_name_str,pub_strs_[i],pub_str);
   }
-  ss_= nh_.advertiseService("taking_off2", &OrbMain::callback,this);  
+  ss_= nh_.advertiseService("receive_image", &OrbMain::callback,this);  
   // 订阅和发布主题,用公有的命名空间
   for(i=0;i<UAV_NUM;i++){
     // 单一函数
@@ -64,7 +64,7 @@ init_ok(false)
 
 bool OrbMain::callback(std_srvs::Trigger::Request& request, std_srvs::Trigger::Response& response)
 {  
-  this->init_ok=true;
+  this->init_ok_=true;
   response.message="get relative position start";
 	response.success=true;
   return true;
@@ -116,6 +116,14 @@ void OrbMain::singleMatch(int index){
     cv::Mat R,t;
     pose_estimation_2d2d(keypoints_[uav_index_],keypoints_[index],good_matches,R,t);
     //这边用了个trick,默认朝向的旋转不大
+    // 把自己套进去了= 0
+    tf::Matrix3x3 the_R=tf::Matrix3x3::getIdentity();
+    //ROS_INFO_STREAM("R: "<<R <<",0,0:"<<R.at<double>(0,0)<<",0,1:"<<R.at<double>(0,1));
+    // the_R.setFromOpenGLSubMatrix(R.data);
+    // (R(0,0),R(1,0),R(2,0),R(0,1),R(1,1),R(2,1),R(0,2),R(1,2),R(2,2));
+    tf::Quaternion the_q;
+    the_R.getRotation(the_q);
+    //ROS_INFO_STREAM("the_q:"<< the_q.getW() << ","<< the_q.getAxis().getX() << ","<< the_q.getAxis().getY()<< ","<<the_q.getAxis().getZ() );
     if((R.at<double>(0,0)>0.9)){
       // ROS_INFO_STREAM(std::endl<<R<<std::endl<<t<<std::endl);
       geometry_msgs::PoseStamped ps;
@@ -124,7 +132,8 @@ void OrbMain::singleMatch(int index){
       ps.pose.position.y=t.at<double>(1,0)*4.2857142857142857;
       ps.pose.position.z=t.at<double>(2,0)*4.2857142857142857;
       // 旋转矩阵转四元数过一段时间再写,看有无必要(肯定有必要)
-
+      // ps.pose.orientation=the_q;
+      tf::quaternionTFToMsg(the_q,ps.pose.orientation);
       t_pubs_[index].publish(ps);
     }
   }
@@ -138,7 +147,7 @@ void OrbMain::singleMatch(int index){
   }
 }
 void OrbMain::timerCallback(const ros::TimerEvent&){
-  if(!init_ok)return ;
+  if(!init_ok_)return ;
   int i;
   for(i=0;i<UAV_NUM;i++){
     if(i==uav_index_)continue;
@@ -153,7 +162,7 @@ OrbMain::~OrbMain()
 
 void OrbMain::ImageCb(const sensor_msgs::ImageConstPtr& msg,const int& index)  
 {  
-  if(!init_ok)return;
+  if(!init_ok_)return;
   cv_bridge::CvImagePtr cv_ptr;  
   // ROS_INFO("hello ");
   try  
@@ -200,7 +209,7 @@ bool OrbMain::pose_estimation_2d2d ( std::vector<cv::KeyPoint> keypoints_1,
                             cv::Mat& R, cv::Mat& t )
 {
 
-  if(!init_ok)return false;
+  if(!init_ok_)return false;
   try
   {
     // 相机内参,TUM Freiburg2
