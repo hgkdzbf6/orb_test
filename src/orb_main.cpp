@@ -73,6 +73,7 @@ bool OrbMain::callback(std_srvs::Trigger::Request& request, std_srvs::Trigger::R
 void OrbMain::run(){
 }
 void OrbMain::singleMatch(int index){
+  // 自身的编号和接受到的图像的信号不一样。
   ROS_ASSERT(index!=uav_index_);
   try  
   { 

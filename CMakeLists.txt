@@ -24,25 +24,25 @@ include_directories(
 LIST(APPEND LINK_LIBS 
   ${OpenCV_LIBS}
   ${catkin_LIBRARIES}
+  ${Eigen_LIBRARIES}
 )
 
 add_executable(sift
   include/sift/sift_main.hpp
   src/sift_main.cpp
   src/sift.cpp)
-target_link_libraries(sift ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+add_dependencies(sift ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(sift ${LINK_LIBS})
 
 install(TARGETS sift
     RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 add_executable(orb
-  include/sift/common.hpp
-  src/orb.cpp
   include/sift/orb_main.hpp
+  src/orb.cpp
   src/orb_main.cpp
 )
 add_dependencies(orb ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(orb
-  ${catkin_LIBRARIES}
-  ${OpenCV_LIBRARIES}
+  ${LINK_LIBS}
 )
