@@ -46,3 +46,13 @@ add_dependencies(orb ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGE
 target_link_libraries(orb
   ${LINK_LIBS}
 )
+
+add_executable(surf
+  include/sift/surf_main.hpp
+  src/surf.cpp
+  src/surf_main.cpp
+)
+add_dependencies(surf ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+target_link_libraries(surf
+  ${LINK_LIBS}
+)

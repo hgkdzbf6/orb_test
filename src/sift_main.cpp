@@ -77,7 +77,7 @@ void SiftMain::run(){
 }
 
 void SiftMain::singleMatch(int index){
-  ROS_ASSERT(index!=uav_index_);
+  CV_Assert(index!=uav_index_);
   try  
   { 
     // cv::BruteForceMatcher<L2<float> > matcher;
@@ -124,6 +124,9 @@ void SiftMain::singleMatch(int index){
     // (R(0,0),R(1,0),R(2,0),R(0,1),R(1,1),R(2,1),R(0,2),R(1,2),R(2,2));
     tf::Quaternion the_q;
     the_R.getRotation(the_q);
+    std::cout<<std::endl<<"t:"<<t<<"the_s_:"<<the_s_<<std::endl;
+    t=the_s_*t;
+
     //ROS_INFO_STREAM("the_q:"<< the_q.getW() << ","<< the_q.getAxis().getX() << ","<< the_q.getAxis().getY()<< ","<<the_q.getAxis().getZ() );
     if((R.at<double>(0,0)>0.9)){
       // ROS_INFO_STREAM(std::endl<<R<<std::endl<<t<<std::endl);
@@ -176,7 +179,7 @@ void SiftMain::ImageCb(const sensor_msgs::ImageConstPtr& msg,const int& index)
     cv::cvtColor(cv_ptr->image, mats_[index], CV_RGB2GRAY);
     
     // 限定提起前15个特征点？ 什么意思？
-    Ptr<SIFT>  siftDetector= SIFT::create();  
+    Ptr<SIFT>  siftDetector= SIFT::create(800,3,0.12);  
     //-- 第一步:检测 SIFT 角点位置
     //-- 第二步:根据角点位置计算 SIFT 的描述子
     // 新版直接有一个函数叫做detectAndCompute
@@ -249,7 +252,7 @@ bool SiftMain::pose_estimation_2d2d ( std::vector<cv::KeyPoint> keypoints_1,
 
     //-- 从本质矩阵中恢复旋转和平移信息.
     cv::recoverPose ( essential_matrix, points1, points2, R, t, focal_length, principal_point );
-    
+    the_s_=findMatchAverageDistance(points1,points2);
     return true;
     // cout<<"R is "<<endl<<R<<endl;
     // cout<<"t is "<<endl<<t<<endl;
@@ -259,4 +262,21 @@ bool SiftMain::pose_estimation_2d2d ( std::vector<cv::KeyPoint> keypoints_1,
     return false;  
   }
     
+}
+
+double SiftMain::findMatchAverageDistance(
+    std::vector<cv::Point2f>& points1,
+    std::vector<cv::Point2f>& points2){
+    double sum_x=0.0;
+    double sum_y=0.0;
+    uint len=points1.size();
+    CV_Assert(len==points2.size());
+    uint i;
+    for(i=0;i<points1.size();i++){
+      sum_x+=(points2[i].x-points1[i].x);
+      sum_y+=(points2[i].y-points1[i].y);
+    }
+    sum_x=sum_x/len;
+    sum_y=sum_y/len;
+    return sqrt(sum_x*sum_x+sum_y*sum_y);
 }

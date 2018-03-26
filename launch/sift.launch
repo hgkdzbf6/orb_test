@@ -1,0 +1,6 @@
+<launch>
+  <node name="sift_main" pkg="sift" type="sift" output="screen">
+  </node>
+
+  <!--<node name="rviz" pkg="rviz" type="rviz" args="-d $(find sift)/rviz/image.rviz"></node >-->
+</launch>

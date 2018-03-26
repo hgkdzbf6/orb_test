@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/highgui/highgui.hpp>
@@ -13,21 +14,19 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
-#include <opencv2/core/eigen.hpp>
 
 static const int UAV_NUM = 2;
 
 //这里想做模板匹配
-class OrbMain
+class SurfMain
 {
 public:
-	OrbMain();
-	virtual ~OrbMain();
+	SurfMain();
+	virtual ~SurfMain();
 	void run();
 private:
 	bool init_ok_;
 	int uav_index_;
-	double the_s_;
 	ros::NodeHandle nh_;
 	// 算了为了可扩展性,直接上数组吧
 	// 这个应该一个就行, 不用数组了
@@ -60,7 +59,4 @@ private:
 
 	bool callback(std_srvs::Trigger::Request& request, std_srvs::Trigger::Response& response);
 	void singleMatch(int i);
-	double findMatchAverageDistance(
-    std::vector<cv::Point2f>& points1,
-    std::vector<cv::Point2f>& points2);
 };

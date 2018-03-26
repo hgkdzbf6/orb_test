@@ -27,6 +27,7 @@ public:
 private:
 	bool init_ok_;
 	int uav_index_;
+	double the_s_;
 	ros::NodeHandle nh_;
 	// 算了为了可扩展性,直接上数组吧
 	// 这个应该一个就行, 不用数组了
@@ -59,4 +60,8 @@ private:
 
 	bool callback(std_srvs::Trigger::Request& request, std_srvs::Trigger::Response& response);
 	void singleMatch(int i);
+	double findMatchAverageDistance(
+    std::vector<cv::Point2f>& points1,
+    std::vector<cv::Point2f>& points2);
+
 };
