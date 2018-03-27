@@ -255,7 +255,6 @@ bool OrbMain::pose_estimation_2d2d ( std::vector<cv::KeyPoint> keypoints_1,
     ROS_ERROR("opencv exception is %s", e2.what());  
     return false;  
   }
-    
 }
 
 double OrbMain::findMatchAverageDistance(
