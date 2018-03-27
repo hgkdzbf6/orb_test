@@ -13,7 +13,7 @@ keypoints_(UAV_NUM),
 descriptors_(UAV_NUM),
 match_pubs_(UAV_NUM),
 t_pubs_(UAV_NUM),
-uav_index_(0),
+my_id_(0),
 init_ok_(false)
 {
   // image_pub_=it_.advertise("out",2);
@@ -28,36 +28,42 @@ init_ok_(false)
   std::string sub_name_str;
   std::string pub_name_str;
   // 读入参数,这里用私有的命名空间
-  pnh.param<int>("uav_index",uav_index_,0);
-  for(i=0;i<UAV_NUM;i++){
-    sub_name_str=str+std::to_string(i)+"_sub_image";
-    pub_name_str=str+std::to_string(i)+"_pub_image";
-    sub_str=slash+str+std::to_string(i)+"/camera_nadir/image_raw";
-    pub_str=slash+str+std::to_string(i)+"/out/image";
-    pnh.param<std::string>(sub_name_str,sub_strs_[i],sub_str);
-    pnh.param<std::string>(pub_name_str,pub_strs_[i],pub_str);
-  }
+  pnh.param<int>("uav_index",my_id_,0);
+  pnh.param<int>("other_index",other_id_,0);
+
+  sub_name_str=str+std::to_string(my_id_)+"_sub_image";
+  pub_name_str=str+std::to_string(my_id_)+"_pub_image";
+  sub_str=slash+str+std::to_string(my_id_)+"/camera_nadir/image_raw";
+  pub_str=slash+str+std::to_string(my_id_)+"/out/image";
+  pnh.param<std::string>(sub_name_str,sub_strs_[0],sub_str);
+  pnh.param<std::string>(pub_name_str,pub_strs_[0],pub_str);
+
+  sub_name_str=str+std::to_string(other_id_)+"_sub_image";
+  pub_name_str=str+std::to_string(other_id_)+"_pub_image";
+  sub_str=slash+str+std::to_string(other_id_)+"/camera_nadir/image_raw";
+  pub_str=slash+str+std::to_string(other_id_)+"/out/image";
+  pnh.param<std::string>(sub_name_str,sub_strs_[1],sub_str);
+  pnh.param<std::string>(pub_name_str,pub_strs_[1],pub_str);
+
   ss_= nh_.advertiseService("receive_image", &OrbMain::callback,this);  
   // 订阅和发布主题,用公有的命名空间
-  for(i=0;i<UAV_NUM;i++){
-    // 单一函数
-    // image_subs_[i]=it_.subscribe(sub_strs_[i],1,&OrbMain::ImageCb2,this);
-    // 多个函数
-    // 详细见 http://blog.csdn.net/sunfc_nbu/article/details/52881656
-    image_subs_[i]=it_.subscribe(sub_strs_[i],1,boost::bind(&OrbMain::ImageCb,this,_1,i));
-    image_pubs_[i]=it_.advertise(pub_strs_[i],1);
-  }  
+  // 单一函数
+  // image_subs_[i]=it_.subscribe(sub_strs_[i],1,&OrbMain::ImageCb2,this);
+  // 多个函数
+  // 详细见 http://blog.csdn.net/sunfc_nbu/article/details/52881656
+  image_subs_[0]=it_.subscribe(sub_strs_[0],1,boost::bind(&OrbMain::ImageCb,this,_1,0));
+  image_pubs_[0]=it_.advertise(pub_strs_[0],1);    
+  image_subs_[1]=it_.subscribe(sub_strs_[1],1,boost::bind(&OrbMain::ImageCb,this,_1,1));
+  image_pubs_[1]=it_.advertise(pub_strs_[1],1);
+
   // std::cout <<"wtf????????????" << std::endl;
   // 这里定义匹配,按照穿过的图像进行匹配
 
   // 用浪费点空间的方法省点编写时间吧
-  for(i=0;i<UAV_NUM;i++){
-    if(i==uav_index_)continue;
-    // 广播匹配图像,后期可以不用
-    match_pubs_[i]=it_.advertise("pipei"+std::to_string(uav_index_)+std::to_string(i),1);
-    // 广播位移向量(未来有可能加入旋转)
-    t_pubs_[i]=nh_.advertise<geometry_msgs::PoseStamped>("relative_position"+std::to_string(uav_index_)+std::to_string(i),5);
-  }
+  // 广播匹配图像,后期可以不用
+  match_pubs_[0]=it_.advertise("match"+std::to_string(my_id_)+std::to_string(other_id_),1);
+  // 广播位移向量(未来有可能加入旋转)
+  t_pubs_[0]=nh_.advertise<geometry_msgs::PoseStamped>("relative_pose"+std::to_string(my_id_)+std::to_string(other_id_),5);
 
   // std::cout <<"wtf???????????????????????" << std::endl;
   // 定时器,0.1s
@@ -76,20 +82,20 @@ void OrbMain::run(){
 }
 void OrbMain::singleMatch(int index){
   // 自身的编号和接受到的图像的信号不一样。
-  ROS_ASSERT(index!=uav_index_);
+  // ROS_ASSERT(index!=my_id_);
   try  
   { 
     cv::Ptr<cv::DescriptorMatcher> matcher  = cv::DescriptorMatcher::create ( "BruteForce-Hamming" );
     //-- 第三步:对两幅图像中的BRIEF描述子进行匹配，使用 Hamming 距离
     std::vector<cv::DMatch> matches;
     //BFMatcher matcher ( NORM_HAMMING );
-    matcher->match ( descriptors_[uav_index_], descriptors_[index], matches );
+    matcher->match ( descriptors_[0], descriptors_[1], matches );
     
     //-- 第四步:匹配点对筛选
     double min_dist=10000, max_dist=0;
 
     //找出所有匹配之间的最小距离和最大距离, 即是最相似的和最不相似的两组点之间的距离
-    for ( int i = 0; i < descriptors_[uav_index_].rows; i++ )
+    for ( int i = 0; i < descriptors_[0].rows; i++ )
     {
         double dist = matches[i].distance;
         if ( dist < min_dist ) min_dist = dist;
@@ -97,7 +103,7 @@ void OrbMain::singleMatch(int index){
     }
     //当描述子之间的距离大于两倍的最小距离时,即认为匹配有误.但有时候最小距离会非常小,设置一个经验值30作为下限.
     std::vector<cv::DMatch > good_matches;
-    for ( int i = 0; i <  descriptors_[uav_index_].rows; i++ )
+    for ( int i = 0; i <  descriptors_[0].rows; i++ )
     {
         if ( matches[i].distance <= std::max ( 2*min_dist, 30.0 ) )
         {
@@ -108,14 +114,14 @@ void OrbMain::singleMatch(int index){
     //-- 第五步:绘制匹配结果
     cv::Mat img_match; 
     cv::Mat img_goodmatch;
-    cv::drawMatches ( mats_[uav_index_], keypoints_[uav_index_], mats_[index], keypoints_[index], matches, img_match );
-    cv::drawMatches ( mats_[uav_index_], keypoints_[uav_index_], mats_[index], keypoints_[index], good_matches, img_goodmatch );
+    cv::drawMatches ( mats_[0], keypoints_[0], mats_[1], keypoints_[1], matches, img_match );
+    cv::drawMatches ( mats_[0], keypoints_[0], mats_[1], keypoints_[1], good_matches, img_goodmatch );
     // ROS_INFO("%d",img_goodmatch.rows);
-    match_pubs_[index].publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", img_goodmatch).toImageMsg());
+    match_pubs_[0].publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", img_goodmatch).toImageMsg());
     // cv::imshow ( "所有匹配点对", img_match );
     // cv::imshow ( "优化后匹配点对", img_goodmatch );
     cv::Mat R,t;
-    pose_estimation_2d2d(keypoints_[uav_index_],keypoints_[index],good_matches,R,t);
+    pose_estimation_2d2d(keypoints_[0],keypoints_[1],good_matches,R,t);
     //这边用了个trick,默认朝向的旋转不大
     // 把自己套进去了= 0
     // 查过这里的R矩阵，类型是双精度浮点数
@@ -136,7 +142,7 @@ void OrbMain::singleMatch(int index){
       ps.pose.orientation.x=the_q.x();
       ps.pose.orientation.y=the_q.y();
       ps.pose.orientation.z=the_q.z();
-      t_pubs_[index].publish(ps);
+      t_pubs_[0].publish(ps);
     }
   }
   catch (cv_bridge::Exception& e)  
@@ -150,11 +156,7 @@ void OrbMain::singleMatch(int index){
 }
 void OrbMain::timerCallback(const ros::TimerEvent&){
   if(!init_ok_)return ;
-  int i;
-  for(i=0;i<UAV_NUM;i++){
-    if(i==uav_index_)continue;
-    singleMatch(i);
-  }
+  singleMatch(0);
 }
 
 OrbMain::~OrbMain()

@@ -55,9 +55,9 @@ init_ok_(false)
   for(i=0;i<UAV_NUM;i++){
     if(i==uav_index_)continue;
     // 广播匹配图像,后期可以不用
-    match_pubs_[i]=it_.advertise("pipei"+std::to_string(uav_index_)+std::to_string(i),1);
+    match_pubs_[i]=it_.advertise("match"+std::to_string(uav_index_)+std::to_string(i),1);
     // 广播位移向量(未来有可能加入旋转)
-    t_pubs_[i]=nh_.advertise<geometry_msgs::PoseStamped>("relative_position"+std::to_string(uav_index_)+std::to_string(i),5);
+    t_pubs_[i]=nh_.advertise<geometry_msgs::PoseStamped>("relative_pose"+std::to_string(uav_index_)+std::to_string(i),5);
   }
 
   // std::cout <<"wtf???????????????????????" << std::endl;

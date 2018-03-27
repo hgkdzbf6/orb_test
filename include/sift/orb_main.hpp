@@ -26,7 +26,8 @@ public:
 	void run();
 private:
 	bool init_ok_;
-	int uav_index_;
+	int my_id_;
+	int other_id_;
 	double the_s_;
 	ros::NodeHandle nh_;
 	// 算了为了可扩展性,直接上数组吧
