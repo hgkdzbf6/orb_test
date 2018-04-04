@@ -24,7 +24,6 @@ public:
 	SiftMain();
 	virtual ~SiftMain();
 	void run();
-private:
 	bool init_ok_;
 	int uav_index_;
 	double the_s_;

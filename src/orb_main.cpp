@@ -1,84 +1,21 @@
-#include "sift/orb_main.hpp"
+#include "sift/lib/orb_main.hpp"
 
 using namespace cv;
 using namespace cv::xfeatures2d;
 OrbMain::OrbMain():
-it_(nh_),
-sub_strs_(UAV_NUM),
-pub_strs_(UAV_NUM),
-image_subs_(UAV_NUM),
-image_pubs_(UAV_NUM),
 mats_(UAV_NUM),
 keypoints_(UAV_NUM),
 descriptors_(UAV_NUM),
 match_pubs_(UAV_NUM),
-t_pubs_(UAV_NUM),
+good_matches_(UAV_NUM),
 my_id_(0),
 init_ok_(false)
 {
-  // image_pub_=it_.advertise("out",2);
-  // image_sub_=it_.subscribe("/hummingbird/svo/image",2,&OrbMain::ImageCb,this);
   
-	ros::NodeHandle pnh("~");
-  int i;
-  const std::string slash="/";
-  const std::string str="hummingbird";
-  std::string sub_str;
-  std::string pub_str;
-  std::string sub_name_str;
-  std::string pub_name_str;
-  // 读入参数,这里用私有的命名空间
-  pnh.param<int>("uav_index",my_id_,0);
-  pnh.param<int>("other_index",other_id_,0);
-
-  sub_name_str=str+std::to_string(my_id_)+"_sub_image";
-  pub_name_str=str+std::to_string(my_id_)+"_pub_image";
-  sub_str=slash+str+std::to_string(my_id_)+"/camera_nadir/image_raw";
-  pub_str=slash+str+std::to_string(my_id_)+"/out/image";
-  pnh.param<std::string>(sub_name_str,sub_strs_[0],sub_str);
-  pnh.param<std::string>(pub_name_str,pub_strs_[0],pub_str);
-
-  sub_name_str=str+std::to_string(other_id_)+"_sub_image";
-  pub_name_str=str+std::to_string(other_id_)+"_pub_image";
-  sub_str=slash+str+std::to_string(other_id_)+"/camera_nadir/image_raw";
-  pub_str=slash+str+std::to_string(other_id_)+"/out/image";
-  pnh.param<std::string>(sub_name_str,sub_strs_[1],sub_str);
-  pnh.param<std::string>(pub_name_str,pub_strs_[1],pub_str);
-
-  ss_= nh_.advertiseService("receive_image", &OrbMain::callback,this);  
-  // 订阅和发布主题,用公有的命名空间
-  // 单一函数
-  // image_subs_[i]=it_.subscribe(sub_strs_[i],1,&OrbMain::ImageCb2,this);
-  // 多个函数
-  // 详细见 http://blog.csdn.net/sunfc_nbu/article/details/52881656
-  image_subs_[0]=it_.subscribe(sub_strs_[0],1,boost::bind(&OrbMain::ImageCb,this,_1,0));
-  image_pubs_[0]=it_.advertise(pub_strs_[0],1);    
-  image_subs_[1]=it_.subscribe(sub_strs_[1],1,boost::bind(&OrbMain::ImageCb,this,_1,1));
-  image_pubs_[1]=it_.advertise(pub_strs_[1],1);
-
-  // std::cout <<"wtf????????????" << std::endl;
-  // 这里定义匹配,按照穿过的图像进行匹配
-
-  // 用浪费点空间的方法省点编写时间吧
-  // 广播匹配图像,后期可以不用
-  match_pubs_[0]=it_.advertise("match"+std::to_string(my_id_)+std::to_string(other_id_),1);
-  // 广播位移向量(未来有可能加入旋转)
-  t_pubs_[0]=nh_.advertise<geometry_msgs::PoseStamped>("relative_pose"+std::to_string(my_id_)+std::to_string(other_id_),5);
-
-  // std::cout <<"wtf???????????????????????" << std::endl;
-  // 定时器,0.1s
-  timer_ = nh_.createTimer(ros::Duration(0.2), &OrbMain::timerCallback,this);
-}
-
-bool OrbMain::callback(std_srvs::Trigger::Request& request, std_srvs::Trigger::Response& response)
-{  
-  this->init_ok_=true;
-  response.message="get relative position start";
-	response.success=true;
-  return true;
 }
 
 void OrbMain::run(){
+  
 }
 void OrbMain::singleMatch(int index){
   // 自身的编号和接受到的图像的信号不一样。
@@ -116,33 +53,34 @@ void OrbMain::singleMatch(int index){
     cv::Mat img_goodmatch;
     cv::drawMatches ( mats_[0], keypoints_[0], mats_[1], keypoints_[1], matches, img_match );
     cv::drawMatches ( mats_[0], keypoints_[0], mats_[1], keypoints_[1], good_matches, img_goodmatch );
+    good_matches_[0]=img_goodmatch;
     // ROS_INFO("%d",img_goodmatch.rows);
-    match_pubs_[0].publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", img_goodmatch).toImageMsg());
+    // match_pubs_[0].publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", img_goodmatch).toImageMsg());
     // cv::imshow ( "所有匹配点对", img_match );
     // cv::imshow ( "优化后匹配点对", img_goodmatch );
     cv::Mat R,t;
     pose_estimation_2d2d(keypoints_[0],keypoints_[1],good_matches,R,t);
     //这边用了个trick,默认朝向的旋转不大
     // 把自己套进去了= 0
-    // 查过这里的R矩阵，类型是双精度浮点数
+    // 查过这里的R矩阵，类型是双精度浮点数 
     Eigen::Matrix3d the_R;
     Eigen::Vector3d the_t;
     cv::cv2eigen(R,the_R);
     cv::cv2eigen(t,the_t);
     Eigen::Quaterniond the_q=Eigen::Quaterniond(the_R);
     //ROS_INFO_STREAM("the_q:"<< the_q.getW() << ","<< the_q.getAxis().getX() << ","<< the_q.getAxis().getY()<< ","<<the_q.getAxis().getZ() );
-    if((R.at<double>(0,0)>0.9)){
-      // ROS_INFO_STREAM(std::endl<<R<<std::endl<<t<<std::endl);
+    if((R.at<double>(0,0)>0.9 && fabs(t.at<double>(2,0))<1)){
+      // ROS_INFO_STREAM(std::endl<<R<<std::endl<<t<<std::endl);.inverse()
       geometry_msgs::PoseStamped ps;
       ps.header.stamp=ros::Time::now();
-      ps.pose.position.x=the_t(0)/70.0;
-      ps.pose.position.y=the_t(1)/70.0;
-      ps.pose.position.z=the_t(2)/70.0;
+      ps.pose.position.x=-the_t(1)/70.0;
+      ps.pose.position.y=-the_t(0)/70.0;
+      ps.pose.position.z=-the_t(2)/70.0;
       ps.pose.orientation.w=the_q.w();
       ps.pose.orientation.x=the_q.x();
       ps.pose.orientation.y=the_q.y();
       ps.pose.orientation.z=the_q.z();
-      t_pubs_[0].publish(ps);
+      pose_=ps;
     }
   }
   catch (cv_bridge::Exception& e)  
@@ -154,53 +92,11 @@ void OrbMain::singleMatch(int index){
     return;  
   }
 }
-void OrbMain::timerCallback(const ros::TimerEvent&){
-  if(!init_ok_)return ;
-  singleMatch(0);
-}
 
 OrbMain::~OrbMain()
 {
 
 }
-
-void OrbMain::ImageCb(const sensor_msgs::ImageConstPtr& msg,const int& index)  
-{  
-  if(!init_ok_)return;
-  cv_bridge::CvImagePtr cv_ptr;  
-  // ROS_INFO("hello ");
-  try  
-  {  
-    /*转化成CVImage*/  
-    cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);  
-      // if(cv_ptr->image.rows > 60 && cv_ptr->image.cols > 60)  
-    //   cv::circle(cv_ptr->image, cv::Point(50,50), 10, CV_RGB(255,0,0));  
-
-    cv::cvtColor(cv_ptr->image, mats_[index], CV_RGB2GRAY);
-    
-    //-- 第一步:检测 Oriented FAST 角点位置
-    //-- 第二步:根据角点位置计算 BRIEF 描述子
-    // std::vector<std::vector<cv::KeyPoint> > keypoints_1, keypoints_2;
-    // cv::Mat descriptors_1, descriptors_2;
-    Ptr<ORB> detector = cv::ORB::create(500,1.6f,8,31,0,2,ORB::HARRIS_SCORE,31,20);
-    detector->detectAndCompute(mats_[index],Mat(),
-        keypoints_[index],descriptors_[index]);
-    cv::drawKeypoints( mats_[index], keypoints_[index], mats_[index], cv::Scalar::all(-1), cv::DrawMatchesFlags::DEFAULT );
-    // cv::drawKeypoints( mats_[index], keypoints_[index], mats_[index], cv::Scalar::all(-1), cv::DrawMatchesFlags:: DRAW_RICH_KEYPOINTS  );
-  
-    image_pubs_[index].publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", mats_[index]).toImageMsg());  
-
-  }  
-  catch (cv_bridge::Exception& e)  
-  {  
-    ROS_ERROR("cv_bridge exception is %s", e.what());  
-    return;  
-  } catch(cv::Exception& e2){
-    ROS_ERROR("opencv exception is %s", e2.what());  
-    return;  
-  }
-}  
-
 
 bool OrbMain::pose_estimation_2d2d ( std::vector<cv::KeyPoint> keypoints_1,
                             std::vector<cv::KeyPoint> keypoints_2,
@@ -274,13 +170,25 @@ double OrbMain::findMatchAverageDistance(
     return sqrt(sum_x*sum_x+sum_y*sum_y);
 }
 
-int main(int argc, char** argv)
-{
-    ros::init(argc, argv, "orb");
-    ros::NodeHandle nh;
-    OrbMain orb_main;
-    ros::spin();
-    // 这边是图像的订阅器
-    // image_transport::ImageTransport it(nh);    
-    return 0;
+void OrbMain::ExtractKeypoints(cv::Mat mat,int index){
+  try{
+    //-- 第一步:检测 Oriented FAST 角点位置
+    //-- 第二步:根据角点位置计算 BRIEF 描述子
+    mats_[index]=mat.clone();
+    Ptr<ORB> detector = cv::ORB::create(500,1.6f,8,31,0,2,ORB::HARRIS_SCORE,31,20);
+    detector->detectAndCompute(mats_[index],Mat(),
+        keypoints_[index],descriptors_[index]);
+    cv::drawKeypoints( mats_[index], keypoints_[index], mats_[index], cv::Scalar::all(-1), cv::DrawMatchesFlags::DEFAULT );
+  }catch(cv::Exception& e2){
+    ROS_ERROR("opencv exception is %s", e2.what());  
+    return;  
+  }
+}
+
+cv::Mat OrbMain::mat(int index){
+  return mats_[index]; 
+}
+
+cv::Mat OrbMain::good_match(int index){
+  return good_matches_[index];
 }

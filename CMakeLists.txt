@@ -27,19 +27,20 @@ LIST(APPEND LINK_LIBS
   ${Eigen_LIBRARIES}
 )
 
-add_executable(sift
-  include/sift/sift_main.hpp
-  src/sift_main.cpp
-  src/sift.cpp)
-add_dependencies(sift ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(sift ${LINK_LIBS})
+# add_executable(sift
+#   include/sift/sift_main.hpp
+#   src/sift_main.cpp
+#   src/sift.cpp)
+# add_dependencies(sift ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(sift ${LINK_LIBS})
 
-install(TARGETS sift
-    RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+# install(TARGETS sift
+#     RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 add_executable(orb
-  include/sift/orb_main.hpp
-  src/orb.cpp
+  include/sift/lib/orb_main.hpp
+  include/sift/node/orb_node.hpp
+  src/orb_node.cpp
   src/orb_main.cpp
 )
 add_dependencies(orb ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
@@ -47,12 +48,12 @@ target_link_libraries(orb
   ${LINK_LIBS}
 )
 
-add_executable(surf
-  include/sift/surf_main.hpp
-  src/surf.cpp
-  src/surf_main.cpp
-)
-add_dependencies(surf ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-target_link_libraries(surf
-  ${LINK_LIBS}
-)
+# add_executable(surf
+#   include/sift/surf_main.hpp
+#   src/surf.cpp
+#   src/surf_main.cpp
+# )
+# add_dependencies(surf ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# target_link_libraries(surf
+#   ${LINK_LIBS}
+# )
