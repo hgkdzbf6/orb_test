@@ -32,6 +32,7 @@ private:
 	
 	std::vector<std::string> sub_strs_;
 	std::vector<std::string> pub_strs_;
+	std::string receive_image_str_;
 
 	std::vector<image_transport::Publisher> match_pubs_;
 	ros::Timer timer_;

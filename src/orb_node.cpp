@@ -40,8 +40,8 @@ t_pubs_(UAV_NUM*(UAV_NUM-1)*2)
   pub_str=slash+str+std::to_string(orb_main.other_id_)+"/out/image";
   pnh.param<std::string>(sub_name_str,sub_strs_[1],sub_str);
   pnh.param<std::string>(pub_name_str,pub_strs_[1],pub_str);
-
-  ss_= nh_.advertiseService("receive_image", &OrbNode::callback,this);  
+  pnh.param<std::string>("receive_image", receive_image_str_, "receive_image01");
+  ss_= nh_.advertiseService(receive_image_str_, &OrbNode::callback, this);  
   // 订阅和发布主题,用公有的命名空间
   // 单一函数
   // image_subs_[i]=it_.subscribe(sub_strs_[i],1,&OrbNode::ImageCb2,this);
@@ -72,7 +72,7 @@ bool OrbNode::callback(std_srvs::Trigger::Request& request, std_srvs::Trigger::R
 {  
   orb_main.init_ok_=true;
   response.message="get relative position start, from " + 
-    std::to_string(orb_main.my_id_)+ "to " + std::to_string(orb_main.other_id_);
+    std::to_string(orb_main.my_id_)+ " to " + std::to_string(orb_main.other_id_);
 	response.success=true;
   return true;
 }
