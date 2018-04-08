@@ -32,16 +32,6 @@ t_pubs_(UAV_NUM*(UAV_NUM-1)*2)
   pub_str=slash+str+std::to_string(orb_main.my_id_)+"/out/image";
   pnh.param<std::string>(sub_name_str,sub_strs_[0],sub_str);
   pnh.param<std::string>(pub_name_str,pub_strs_[0],pub_str);
-
-  // 另一个
-  sub_name_str=str+std::to_string(orb_main.other_id_)+"_sub_image";
-  pub_name_str=str+std::to_string(orb_main.other_id_)+"_pub_image";
-  sub_str=slash+str+std::to_string(orb_main.other_id_)+"/camera_nadir/image_raw";
-  pub_str=slash+str+std::to_string(orb_main.other_id_)+"/out/image";
-  pnh.param<std::string>(sub_name_str,sub_strs_[1],sub_str);
-  pnh.param<std::string>(pub_name_str,pub_strs_[1],pub_str);
-  pnh.param<std::string>("receive_image", receive_image_str_, "receive_image01");
-  ss_= nh_.advertiseService(receive_image_str_, &OrbNode::callback, this);  
   // 订阅和发布主题,用公有的命名空间
   // 单一函数
   // image_subs_[i]=it_.subscribe(sub_strs_[i],1,&OrbNode::ImageCb2,this);
@@ -49,9 +39,26 @@ t_pubs_(UAV_NUM*(UAV_NUM-1)*2)
   // 详细见 http://blog.csdn.net/sunfc_nbu/article/details/52881656
   image_subs_[0]=it_.subscribe(sub_strs_[0],1,boost::bind(&OrbNode::ImageCb,this,_1,0));
   image_pubs_[0]=it_.advertise(pub_strs_[0],1);    
-  image_subs_[1]=it_.subscribe(sub_strs_[1],1,boost::bind(&OrbNode::ImageCb,this,_1,1));
-  image_pubs_[1]=it_.advertise(pub_strs_[1],1);
+  // 另一个
+  // 如果id相等的话就只监听一个
+  if(orb_main.my_id_ != orb_main.other_id_){
+    sub_name_str=str+std::to_string(orb_main.other_id_)+"_sub_image";
+    pub_name_str=str+std::to_string(orb_main.other_id_)+"_pub_image";
+    sub_str=slash+str+std::to_string(orb_main.other_id_)+"/camera_nadir/image_raw";
+    pub_str=slash+str+std::to_string(orb_main.other_id_)+"/out/image";
+    pnh.param<std::string>(sub_name_str,sub_strs_[1],sub_str);
+    pnh.param<std::string>(pub_name_str,pub_strs_[1],pub_str);  
+    // 订阅和发布主题,用公有的命名空间
+    // 单一函数
+    // image_subs_[i]=it_.subscribe(sub_strs_[i],1,&OrbNode::ImageCb2,this);
+    // 多个函数
+    // 详细见 http://blog.csdn.net/sunfc_nbu/article/details/52881656
+    image_subs_[1]=it_.subscribe(sub_strs_[1],1,boost::bind(&OrbNode::ImageCb,this,_1,1));
+    image_pubs_[1]=it_.advertise(pub_strs_[1],1);
+  }
 
+  pnh.param<std::string>("receive_image", receive_image_str_, "receive_image01");
+  ss_= nh_.advertiseService(receive_image_str_, &OrbNode::callback, this);  
   // std::cout <<"wtf????????????" << std::endl;
   // 这里定义匹配,按照穿过的图像进行匹配
 
@@ -71,6 +78,9 @@ t_pubs_(UAV_NUM*(UAV_NUM-1)*2)
 bool OrbNode::callback(std_srvs::Trigger::Request& request, std_srvs::Trigger::Response& response)
 {  
   orb_main.init_ok_=true;
+  if(orb_main.my_id_ == orb_main.other_id_){
+    orb_main.is_same_ = true;
+  }
   response.message="get relative position start, from " + 
     std::to_string(orb_main.my_id_)+ " to " + std::to_string(orb_main.other_id_);
 	response.success=true;
@@ -83,9 +93,13 @@ void OrbNode::run(){
 void OrbNode::timerCallback(const ros::TimerEvent&){
   if(!orb_main.init_ok_)return ;
   orb_main.singleMatch(0);
+  // if(!orb_main.is_same_){
   match_pubs_[0].publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", orb_main.good_match(0)).toImageMsg());
+  // }  
   if(orb_main.pose_.pose.position.x==0 && orb_main.pose_.pose.position.y==0 )
-    return ;  
+      return ;  
+  // if(orb_main.pose_.pose.position.x==0.01 && orb_main.pose_.pose.position.y==0.01 )
+  //     return ;  
   t_pubs_[0].publish(orb_main.pose_);
 }
 
@@ -108,7 +122,8 @@ void OrbNode::ImageCb(const sensor_msgs::ImageConstPtr& msg,const int& index)
     //   cv::circle(cv_ptr->image, cv::Point(50,50), 10, CV_RGB(255,0,0));  
     cv::cvtColor(cv_ptr->image, mat, CV_RGB2GRAY);
     orb_main.ExtractKeypoints(mat,index);
-    image_pubs_[index].publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", orb_main.mat(index)).toImageMsg());  
+    if(!orb_main.is_same_)
+      image_pubs_[index].publish(cv_bridge::CvImage(std_msgs::Header(), "bgr8", orb_main.mat(index)).toImageMsg());  
   }  
   catch (cv_bridge::Exception& e)  
   {  

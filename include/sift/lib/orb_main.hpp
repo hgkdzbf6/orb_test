@@ -24,6 +24,8 @@ public:
 	OrbMain();
 	virtual ~OrbMain();
 	void run();
+	// 平凡的情况
+	bool is_same_;
 	// 是否初始化完成
 	bool init_ok_;
 	// 自身id

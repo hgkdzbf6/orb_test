@@ -20,6 +20,17 @@ void OrbMain::run(){
 void OrbMain::singleMatch(int index){
   // 自身的编号和接受到的图像的信号不一样。
   // ROS_ASSERT(index!=my_id_);
+  if(is_same_){ 
+    pose_.header.stamp=ros::Time::now();
+    pose_.pose.position.x=0.01;
+    pose_.pose.position.y=0.01;
+    pose_.pose.position.z=0;
+    pose_.pose.orientation.w=1;
+    pose_.pose.orientation.x=0;
+    pose_.pose.orientation.y=0;
+    pose_.pose.orientation.z=0;
+    return;
+  }
   try  
   { 
     cv::Ptr<cv::DescriptorMatcher> matcher  = cv::DescriptorMatcher::create ( "BruteForce-Hamming" );
@@ -171,6 +182,7 @@ double OrbMain::findMatchAverageDistance(
 }
 
 void OrbMain::ExtractKeypoints(cv::Mat mat,int index){
+  if(is_same_)return;
   try{
     //-- 第一步:检测 Oriented FAST 角点位置
     //-- 第二步:根据角点位置计算 BRIEF 描述子
